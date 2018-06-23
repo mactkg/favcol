@@ -19,10 +19,17 @@ def have_worth_url?(fav)
     fav.attrs[:entities][:urls].reject { |u| /https?:\/\/twitter.com/.match? u[:expanded_url] }.size > 0
 end
 
+screen_name = ARGV[0]
+
 tweets_url_have = []
 latest_favorite_id = nil
 5.times do
-  args = { count: 100, include_entities: true, max_id: latest_favorite_id }.compact
+  args = {
+    screen_name: screen_name,
+    count: 100,
+    include_entities: true,
+    max_id: latest_favorite_id
+  }.compact
   favs = client.favorites(**args)
   tweets_url_have.concat(favs.select { |f| have_worth_url?(f) })
   latest_favorite_id = favs.last.id
