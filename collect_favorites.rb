@@ -1,5 +1,6 @@
 require 'uri'
 require 'twitter'
+require 'metainspector'
 
 client = Twitter::REST::Client.new do |config|
   config.consumer_key        = ENV['TWITTER_CONSUMER_KEY']
@@ -19,11 +20,26 @@ def have_worth_url?(fav)
     fav.attrs[:entities][:urls].reject { |u| /https?:\/\/twitter.com/.match? u[:expanded_url] }.size > 0
 end
 
+def fill_meta_data(fav)
+  fav.attrs[:entities][:urls].map! do |u|
+    page = MetaInspector.new(u[:expanded_url])
+    u[:title] = page.title
+    u[:description] = page.description
+    u[:image] = page.images.best
+    u
+  rescue MetaInspector::ParserError => e
+    u[:title] = "ParseError"
+    u[:description] = "Something wrong with parsing."
+    u
+  end
+  fav
+end
+
 screen_name = ARGV[0]
 
 tweets_url_have = []
 latest_favorite_id = nil
-5.times do
+2.times do
   args = {
     screen_name: screen_name,
     count: 100,
@@ -36,7 +52,9 @@ latest_favorite_id = nil
 end
 
 tweets_url_have.each do |fav|
+  fav = fill_meta_data(fav)
+  
   puts "=== === ==="
   puts "🐣 #{fav.text} by #{fav.user.name}(@#{fav.user.screen_name})"
-  puts "🌏 #{fav.attrs[:entities][:urls].map{ |u| u[:expanded_url] }.join(" ") }"
+  puts "🌏 #{fav.attrs[:entities][:urls].map{ |u| "#{u[:title]} (#{u[:expanded_url]})" }.join(" ") }"
 end
